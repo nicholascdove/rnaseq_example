@@ -1,0 +1,69 @@
+---
+title: "Analysis and Figures"
+output: html_document
+date: "2023-10-24"
+---
+
+```{r}
+library(DESeq2)
+library(tidyverse)
+library(umap)
+library(pheatmap)
+```
+
+```{r}
+sampleFiles<- c("SRR391535-output_basename.counts",
+                "SRR391536-output_basename.counts",
+                "SRR391537-output_basename.counts",
+                "SRR391538-output_basename.counts",
+                "SRR391539-output_basename.counts",
+                "SRR391541-output_basename.counts")
+sampleNames <- c("Leaf tissue 1","Leaf tissue 2","Leaf tissue 3","Leaf tissue 4","Leaf tissue 5","Leaf tissue 6")
+sampleCondition <- c("ambient","ambient","elevated","elevated","elevated","ambient")
+sampleTable <- data.frame(sampleName = sampleNames, fileName = sampleFiles, condition = sampleCondition)
+
+treatments = c("ambient","elevated")
+
+ddsHTSeq <- DESeqDataSetFromHTSeqCount(sampleTable = sampleTable,
+                                       directory = "~/rna_seq_test/data/",
+                                       design = ~ condition)
+colData(ddsHTSeq)$condition <- factor(colData(ddsHTSeq)$condition,
+                                      levels = treatments)
+```
+
+```{r}
+dds <- DESeq(ddsHTSeq)
+res <- subset(results(dds), padj<0.05)
+resdata <- merge(as.data.frame(res), as.data.frame(counts(dds,normalized =TRUE)), by = 'row.names', sort = FALSE)
+head(resdata)
+```
+
+```{r}
+plotMA(dds, ylim=c(-8,8), main = "Gmax RNAseq")
+```
+```{r}
+dds_norm <- vst(dds)
+normalized_counts <- t(assay(dds_norm))
+
+umap_results <- umap::umap(normalized_counts, n_neighbors = 3)
+
+ggplot(data.frame(umap_results$layout) %>% cbind(dds$condition), aes(x = X1, y = X2, color = dds$condition)) +
+  geom_point(size = 4) + 
+  labs(y = "UMPA2", x = "UMAP1", color = "Ozone levels") +
+  scale_color_manual(values = c("gray", "tomato1")) +
+  theme_bw()
+```
+
+```{r}
+selection <- order(rowMeans(counts(dds,normalized=T)),decreasing=T)[1:1000]
+
+df_annotation <- data.frame(row.names = c("Leaf tissue 1", "Leaf tissue 2", "Leaf tissue 3", "Leaf tissue 4", "Leaf tissue 5", "Leaf tissue 6"),
+                            Ozone_levels = c("ambient","ambient","elevated","elevated","elevated","ambient"))
+annotation_colors = list(Ozone_levels = c(ambient = "gray", elevated = "tomato1"))
+p <- pheatmap(t(assay(dds_norm)[selection,]),
+              annotation_row = df_annotation,
+              annotation_colors = annotation_colors,
+              show_colnames = F)
+p
+```
+
