@@ -1,6 +1,6 @@
 ---
 title: "Analysis and Figures"
-output: html_document
+output: rmarkdown::github_document
 date: "2023-10-24"
 ---
 
@@ -25,7 +25,7 @@ sampleTable <- data.frame(sampleName = sampleNames, fileName = sampleFiles, cond
 treatments = c("ambient","elevated")
 
 ddsHTSeq <- DESeqDataSetFromHTSeqCount(sampleTable = sampleTable,
-                                       directory = "~/rna_seq_test/data/",
+                                       directory = "~/rnaseq_example/data/",
                                        design = ~ condition)
 colData(ddsHTSeq)$condition <- factor(colData(ddsHTSeq)$condition,
                                       levels = treatments)
